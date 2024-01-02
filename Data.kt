@@ -18,21 +18,17 @@ class System : JavaPlugin(), Listener {
     }
 
     override fun onDisable() {
-        for (player in server.onlinePlayers) {
-            savePlayerData(player)
-        }
+        saveAllPlayerData()
     }
 
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
-        val player = event.player
-        loadPlayerData(player)
+        loadPlayerData(event.player)
     }
 
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
-        val player = event.player
-        savePlayerData(player)
+        savePlayerData(event.player)
     }
 
     private fun createUserDataConfig() {
@@ -53,13 +49,17 @@ class System : JavaPlugin(), Listener {
     }
 
     private fun savePlayerData(player: Player) {
-        userDataConfig.set("${player.name}.money", 1)
-        userDataConfig.set("${player.name}.level", 1)
+        userDataConfig.set("${player.uniqueId}.money", 1)
+        userDataConfig.set("${player.uniqueId}.level", 1)
+    }
+
+    private fun saveAllPlayerData() {
+        server.onlinePlayers.forEach { savePlayerData(it) }
         saveUserDataConfig()
     }
 
     private fun loadPlayerData(player: Player) {
-        val money = userDataConfig.getInt("${player.name}.money", 0)
-        val level = userDataConfig.getInt("${player.name}.level", 0)
+        val money = userDataConfig.getInt("${player.uniqueId}.money", 0)
+        val level = userDataConfig.getInt("${player.uniqueId}.level", 0)
     }
 }
