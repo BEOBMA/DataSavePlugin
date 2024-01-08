@@ -1,65 +1,54 @@
-import org.bukkit.configuration.file.YamlConfiguration
-import org.bukkit.entity.Player
-import org.bukkit.event.EventHandler
-import org.bukkit.plugin.java.JavaPlugin
-import org.bukkit.event.Listener
-import org.bukkit.event.player.PlayerJoinEvent
-import org.bukkit.event.player.PlayerQuitEvent
-import java.io.File
+object QuestManager {
+    private val folder: File = File(Main.instance.dataFolder, "/Quests")
+    private var questList = mutableListOf<Quest>()
 
-class System : JavaPlugin(), Listener {
+    fun create(quest: Quest) {
+        val file = File(folder, "${quest.name}.yml")
+        val config = YamlConfiguration.loadConfiguration(file)
 
-    private lateinit var userDataConfigFile: File
-    private lateinit var userDataConfig: YamlConfiguration
+        config["name"] = quest.name
+        config["description"] = quest.description
+        config["reward"] = quest.reward
+        config["isClear"] = quest.isClear
+        questList.add(quest)
 
-    override fun onEnable() {
-        server.pluginManager.registerEvents(this, this)
-        createUserDataConfig()
+        config.save(file)
     }
 
-    override fun onDisable() {
-        saveAllPlayerData()
+    fun save(quest: Quest) {
+        val file = File(folder, "${quest.name}.yml")
+        val config = YamlConfiguration.loadConfiguration(file)
+
+        config["name"] = quest.name
+        config["description"] = quest.description
+        config["reward"] = quest.reward
+        config["isClear"] = quest.isClear
+
+        config.save(file)
     }
 
-    @EventHandler
-    fun onPlayerJoin(event: PlayerJoinEvent) {
-        loadPlayerData(event.player)
-    }
+    fun load() {
+        questList.clear()
+        val files = folder.listFiles() ?: return
 
-    @EventHandler
-    fun onPlayerQuit(event: PlayerQuitEvent) {
-        savePlayerData(event.player)
-    }
+        for (file in files) {
+            val config = YamlConfiguration.loadConfiguration(file)
+            val description = config.getStringList("description")
+            val reward = config.getList("reward")!!.map {
+                it as? ItemStack ?: throw IllegalStateException("Invalid item stack in reward list")
+            }
+            val isClear = config.getBoolean("isClear")
 
-    private fun createUserDataConfig() {
-        userDataConfigFile = File(dataFolder, "UserData.yml")
-        if (!userDataConfigFile.exists()) {
-            userDataConfigFile.parentFile.mkdirs()
-            saveResource("UserData.yml", false)
-        }
-        userDataConfig = YamlConfiguration.loadConfiguration(userDataConfigFile)
-    }
-
-    private fun saveUserDataConfig() {
-        try {
-            userDataConfig.save(userDataConfigFile)
-        } catch (e: Exception) {
-            e.printStackTrace()
+            val quest = Quest(file.name, description, reward, isClear)
+            questList.add(quest)
         }
     }
 
-    private fun savePlayerData(player: Player) {
-        userDataConfig.set("${player.uniqueId}.money", 1)
-        userDataConfig.set("${player.uniqueId}.level", 1)
+    fun getQuestById(name: String): Quest? {
+        return questList.find { it.name == name }
     }
 
-    private fun saveAllPlayerData() {
-        server.onlinePlayers.forEach { savePlayerData(it) }
-        saveUserDataConfig()
-    }
-
-    private fun loadPlayerData(player: Player) {
-        val money = userDataConfig.getInt("${player.uniqueId}.money", 0)
-        val level = userDataConfig.getInt("${player.uniqueId}.level", 0)
+    fun getAllQuests(): MutableList<Quest> {
+        return questList
     }
 }
